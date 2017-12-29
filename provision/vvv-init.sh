@@ -9,6 +9,9 @@ WP_TYPE=`get_config_value 'wp_type' "single"`
 DB_NAME=`get_config_value 'db_name' "${VVV_SITE_NAME}"`
 DB_NAME=${DB_NAME//[\\\/\.\<\>\:\"\'\|\?\!\*-]/}
 
+DELETE_DEFAULT_PLUGINS=`get_config_value 'delete_default_plugins' "false"`
+DELETE_DEFAULT_THEMES=`get_config_value 'delete_default_themes' "false"`
+
 # Make a database, if we don't already have one
 echo -e "\nCreating database '${DB_NAME}' (if it's not already there)"
 mysql -u root --password=root -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME}"
@@ -50,16 +53,20 @@ if ! $(noroot wp core is-installed); then
   noroot wp core ${INSTALL_COMMAND} --url="${DOMAIN}" --quiet --title="${SITE_TITLE}" --admin_name=admin --admin_email="admin@local.test" --admin_password="password"
   
   # Remove default plugins
-  echo "Removing default plugins..."
-  noroot wp plugin uninstall hello akismet
+  if [ "${DELETE_DEFAULT_PLUGINS}" != "false" ]; then
+    echo -e "\nRemoving default plugins..."    
+    noroot wp plugin uninstall hello akismet
+  fi  
   
   # Remove default themes
-  echo "Removing default themes..."
-  noroot wp theme uninstall twentyfifteen twentysixteen twentyseventeen
+  if [ "${DELETE_DEFAULT_THEMES}" != "false" ]; then  
+    echo -e "\nRemoving default themes..."
+    noroot wp theme uninstall twentyfifteen twentysixteen twentyseventeen
+  fi  
 else
   echo "Updating WordPress Stable..."
   cd ${VVV_PATH_TO_SITE}/public_html
-  noroot wp core update --version="${WP_VERSION}"
+  noroot wp core update --version="${WP_VERSION}" 
 fi
 
 cp -f "${VVV_PATH_TO_SITE}/provision/vvv-nginx.conf.tmpl" "${VVV_PATH_TO_SITE}/provision/vvv-nginx.conf"
