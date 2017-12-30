@@ -12,6 +12,8 @@ DB_NAME=${DB_NAME//[\\\/\.\<\>\:\"\'\|\?\!\*-]/}
 DELETE_DEFAULT_PLUGINS=`get_config_value 'delete_default_plugins' "false"`
 DELETE_DEFAULT_THEMES=`get_config_value 'delete_default_themes' "false"`
 WP_CONTENT=`get_config_value 'wp_content' "false"`
+PLUGINS=(`cat ${VVV_CONFIG} | shyaml get-values sites.${SITE_ESCAPED}.custom.plugins 2> /dev/null`)
+THEMES=(`cat ${VVV_CONFIG} | shyaml get-values sites.${SITE_ESCAPED}.custom.themes 2> /dev/null`)
 
 # Make a database, if we don't already have one
 echo -e "\nCreating database '${DB_NAME}' (if it's not already there)"
@@ -70,12 +72,36 @@ if ! $(noroot wp core is-installed); then
     echo -e "\nImporting default content..."
     curl -s https://raw.githubusercontent.com/manovotny/wptest/master/wptest.xml > import.xml && noroot wp plugin install wordpress-importer --quiet && noroot wp plugin activate wordpress-importer --quiet && noroot wp import import.xml --authors=skip --quiet && rm import.xml
   fi  
+  
+  # Add plugins
+  for i in "${PLUGINS[@]}"
+    do :
+      if [[ ! -d "${VVV_PATH_TO_SITE}/public_html/wp-content/plugins/$i" ]]; then
+        echo "Installing plugin $i from wordpress.org..."
+        noroot wp plugin install $i --quiet
+      else
+        echo "Updating plugin $i from wordpress.org..."
+        noroot wp plugin update $i --quiet
+      fi
+  done
+  
+  # Add themes
+  for k in "${THEMES[@]}"
+    do :
+      if [[ ! -d "${VVV_PATH_TO_SITE}/public_html/wp-content/themes/$k" ]]; then
+        echo "Installing theme $k from wordpress.org..."
+        noroot wp theme install $k --quiet
+      else
+        echo "Updating theme $k from wordpress.org..."
+        noroot wp theme update $k --quiet
+      fi
+  done
 
 else
   echo "Updating WordPress Stable..."
   cd ${VVV_PATH_TO_SITE}/public_html
   noroot wp core update --version="${WP_VERSION}" 
-fi
+fi  
 
 cp -f "${VVV_PATH_TO_SITE}/provision/vvv-nginx.conf.tmpl" "${VVV_PATH_TO_SITE}/provision/vvv-nginx.conf"
 sed -i "s#{{DOMAINS_HERE}}#${DOMAINS}#" "${VVV_PATH_TO_SITE}/provision/vvv-nginx.conf"
