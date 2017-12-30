@@ -11,6 +11,7 @@ DB_NAME=${DB_NAME//[\\\/\.\<\>\:\"\'\|\?\!\*-]/}
 
 DELETE_DEFAULT_PLUGINS=`get_config_value 'delete_default_plugins' "false"`
 DELETE_DEFAULT_THEMES=`get_config_value 'delete_default_themes' "false"`
+WP_CONTENT=`get_config_value 'wp_content' "false"`
 
 # Make a database, if we don't already have one
 echo -e "\nCreating database '${DB_NAME}' (if it's not already there)"
@@ -62,7 +63,14 @@ if ! $(noroot wp core is-installed); then
   if [ "${DELETE_DEFAULT_THEMES}" != "false" ]; then  
     echo -e "\nRemoving default themes..."
     noroot wp theme uninstall twentyfifteen twentysixteen twentyseventeen
+  fi
+
+  # Import default content
+  if [ "${WP_CONTENT}" != "false" ]; then  
+    echo -e "\nImporting default content..."
+    curl -s https://raw.githubusercontent.com/manovotny/wptest/master/wptest.xml > import.xml && noroot wp plugin install wordpress-importer --quiet && noroot wp plugin activate wordpress-importer --quiet && noroot wp import import.xml --authors=skip --quiet && rm import.xml
   fi  
+
 else
   echo "Updating WordPress Stable..."
   cd ${VVV_PATH_TO_SITE}/public_html
